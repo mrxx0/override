@@ -5,9 +5,9 @@
 int verify_user_pass(char *password)
 {
 	if (strcmp(password, "admin") == 0)
-		return (1);
-	else
 		return (0);
+	else
+		return (1);
 }
 
 int verify_user_name(char *user)
@@ -34,7 +34,7 @@ int main()
 	{
 		printf("Enter Password:\n");
 		fgets(password, 100, stdin);
-		if (verify_user_pass(password) == 0)
+		if (verify_user_pass(password) == 0 || verify_user_pass(password) == 1)
 		{
 			printf("nope, incorrect password...\n\n");
 			return (0);
