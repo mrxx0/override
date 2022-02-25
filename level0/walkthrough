@@ -1,0 +1,34 @@
+In this level a prompt is asking of a password :
+
+level00@OverRide:~$ ./level00
+***********************************
+* 	     -Level00 -		  *
+***********************************
+Password:
+
+Of course we don't have it.
+In the assembly code we found a comparaison with the user input read by
+scanf :
+
+0x080484de <+74>:	call   0x80483d0 <__isoc99_scanf@plt>
+   0x080484e3 <+79>:	mov    0x1c(%esp),%eax
+   0x080484e7 <+83>:	cmp    $0x149c,%eax
+
+If eax == 0x149c it's all good
+
+0x149c = 5276 in decimal :
+
+gdb) p/d 0x149c
+$1 = 5276
+
+level00@OverRide:~$ ./level00
+***********************************
+* 	     -Level00 -		  *
+***********************************
+Password:5276
+
+Authenticated!
+$ id
+uid=1000(level00) gid=1000(level00) euid=1001(level01) egid=100(users) groups=1001(level01),100(users),1000(level00)
+
+And we're good !
