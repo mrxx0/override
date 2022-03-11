@@ -1,0 +1,69 @@
+For this exercise we have a binary which asks us for a password:
+
+level03@OverRide:~$ ./level03 
+***********************************
+*		level03		**
+***********************************
+Password:root
+
+Invalid Password
+
+
+If we look at the functions of the binary more closely we can see 3 functions
+
+(gdb) info function
+All defined functions:
+	...
+0x08048660  decrypt
+0x08048747  test
+0x0804885a  main
+	...
+
+
+The first, main, starts by initializing a random generator with srand(time(NULL)).
+Then asks for the password, to send it to test as a parameter with a value "0x1337d00d".
+
+The test function, tests if our password value - the value sent by the main is less than 0x15.
+If it is then it will send the result of the subtraction to decrypt.
+If the value is not less than 0x15, then it calls the decrypt function with a random number with the rand() function.
+
+The decrypt function is intended to decrypt a string that it has locally
+
+   0x08048673 <+19>:	movl   $0x757c7d51,-0x1d(%ebp)
+   0x0804867a <+26>:	movl   $0x67667360,-0x19(%ebp)
+   0x08048681 <+33>:	movl   $0x7b66737e,-0x15(%ebp)
+   0x08048688 <+40>:	movl   $0x33617c7d,-0x11(%ebp)
+   0x0804868f <+47>:	movb   $0x0,-0xd(%ebp)
+
+(gdb) x/s $ebp - 0x1d
+0xffffd68b:	 "Q}|u`sfg~sf{}|a3"
+
+It starts with a strlen and then loops over all the characters in the string.
+On each character it does an xor with the value we sent.
+
+Then compares the result with the string "Congratulations!".
+If we have the correct one, it opens a shell with system, otherwise it displays Invalid Password.
+
+So we have to find the right value so that after the xor we get the right string
+With a script we quickly find:
+
+➜  level03 git:(master) ✗ python Ressources/find_xor_value_level03.py 
+('s1 is :', 'Q}|u`sfg~sf{}|a3')
+('s2 is :', 'Congratulations!')
+XOR value between S1 and S2 is :
+[18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18]
+
+So we need to send it 18, we take the value send by main 0x1337d00d = 322424845 - 18 = 322424827.
+
+So if we send him 322424827 for the comparison we will have 18 = 0x12 so much less than 0x15.
+And the xors will change the string to "Congratulations!".
+
+level03@OverRide:~$ ./level03 
+***********************************
+*		level03		**
+***********************************
+Password:322424827      
+$ cat /home/users/level04/.pass
+kgv3tkEb9h2mLkRsPkXRfc2mHbjMxQzvb2FrgKkf
+
+
