@@ -11,7 +11,7 @@ int main(int argc, char **argv)
 	size_t i = 0;
 	long key = 0x1337d00d;
 	int j = 0;
-	while (j < 3000)
+	while (j < 30)
 	{
 		bzero(&search, len);
 		while (i < len)
