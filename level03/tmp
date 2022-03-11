@@ -68,11 +68,15 @@ ___________________________________________________________________________
    0x0804875c <+21>:	cmpl   $0x15,-0xc(%ebp).          0xc -> 0x1337d00d
    0x08048760 <+25>:	ja     0x804884a <test+259>.  —> random
 
+	( Passe si après sub = 0x15, ——> 322424824 )
+
    0x08048766 <+31>:	mov    -0xc(%ebp),%eax
-   0x08048769 <+34>:	shl    $0x2,%eax
-   0x0804876c <+37>:	add    $0x80489f0,%eax
-   0x08048771 <+42>:	mov    (%eax),%eax
-   0x08048773 <+44>:	jmp    *%eax
+   0x08048769 <+34>:	shl    $0x2,%eax				21 -> 84 décalage binaire de deux vers la gauche 
+												0001 0101 -> 0101 0100 
+
+   0x0804876c <+37>:	add    $0x80489f0,%eax		84 + 134515184 = 134515268
+   0x08048771 <+42>:	mov    (%eax),%eax				134515268 -> 134514749 (0x0804883d)
+   0x08048773 <+44>:	jmp    *%eax					jmp to 0x0804883d (test + 246) 
 
    0x08048775 <+46>:	mov    -0xc(%ebp),%eax
    0x08048778 <+49>:	mov    %eax,(%esp)
@@ -144,10 +148,10 @@ ___________________________________________________________________________
    0x08048836 <+239>:	call   0x8048660 <decrypt>
    0x0804883b <+244>:	jmp    0x8048858 <test+273>
 
-   0x0804883d <+246>:	mov    -0xc(%ebp),%eax
-   0x08048840 <+249>:	mov    %eax,(%esp)
-   0x08048843 <+252>:	call   0x8048660 <decrypt>
-   0x08048848 <+257>:	jmp    0x8048858 <test+273>
+   0x0804883d <+246>:	mov    -0xc(%ebp),%eax				-0xc(%eax) = 0x15 -> 21
+   0x08048840 <+249>:	mov    %eax,(%esp)	
+   0x08048843 <+252>:	call   0x8048660 <decrypt>			decrypt(21)
+   0x08048848 <+257>:	jmp    0x8048858 <test+273>		
 
    0x0804884a <+259>:	call   0x8048520 <rand@plt>
    0x0804884f <+264>:	mov    %eax,(%esp)
@@ -164,8 +168,8 @@ ___________________________________________________________________________
 —————————————————————————————————————
 
 
-
-
+ 
+( 322424824 val pour pas avoir le rand)
 
 
    0x08048660 <+0>:	push   %ebp
@@ -174,7 +178,7 @@ ___________________________________________________________________________
    0x08048664 <+4>:	push   %esi
    0x08048665 <+5>:	sub    $0x40,%esp
 
-   0x08048668 <+8>:	mov    %gs:0x14,%eax
+   0x08048668 <+8>:	mov    %gs:0x14,%eax			21 -> 1107508736
    0x0804866e <+14>:	mov    %eax,-0xc(%ebp)
    0x08048671 <+17>:	xor    %eax,%eax
 
@@ -190,36 +194,46 @@ ___________________________________________________________________________
    0x08048698 <+56>:	add    $0x4,%esp
 
    0x0804869b <+59>:	pop    %tax
-   0x0804869c <+60>:	lea    -0x1d(%ebp),%eax
 
-   0x0804869f <+63>:	movl   $0xffffffff,-0x2c(%ebp)								Q}|u`sfg~sf{}|a3
+   0x0804869c <+60>:	lea    -0x1d(%ebp),%eax						Q}|u`sfg~sf{}|a3
+   0x0804869f <+63>:	movl   $0xffffffff,-0x2c(%ebp)				compteur 				
    0x080486a6 <+70>:	mov    %eax,%edx
    0x080486a8 <+72>:	mov    $0x0,%eax
    0x080486ad <+77>:	mov    -0x2c(%ebp),%ecx
    0x080486b0 <+80>:	mov    %edx,%edi
    0x080486b2 <+82>:	repnz scas %es:(%edi),%al strlen of string “Q}|u`sfg~sf{}|a3” ?
    0x080486b4 <+84>:	mov    %ecx,%eax
-   0x080486b6 <+86>:	not    %eax
-   0x080486b8 <+88>:	sub    $0x1,%eax					-1 au strlen
-   0x080486bb <+91>:	mov    %eax,-0x24(%ebp)
-   0x080486be <+94>:	movl   $0x0,-0x28(%ebp)
+   0x080486b6 <+86>:	not    %eax								compteur -18 -> 17
+   0x080486b8 <+88>:	sub    $0x1,%eax							-1 au strlen
+   0x080486bb <+91>:	mov    %eax,-0x24(%ebp)			ebp - 0x24 = strlen(Q}|u`sfg~sf{}|a3) = 16
+   0x080486be <+94>:	movl   $0x0,-0x28(%ebp)			set var a 0
    0x080486c5 <+101>:	jmp    0x80486e5 <decrypt+133>
+
+
 
    0x080486c7 <+103>:	lea    -0x1d(%ebp),%eax
    0x080486ca <+106>:	add    -0x28(%ebp),%eax
    0x080486cd <+109>:	movzbl (%eax),%eax
-   0x080486d0 <+112>:	mov    %eax,%edx
-   0x080486d2 <+114>:	mov    0x8(%ebp),%eax
-   0x080486d5 <+117>:	xor    %edx,%eax
+   0x080486d0 <+112>:	mov    %eax,%edx				str[j]
+
+   0x080486d2 <+114>:	mov    0x8(%ebp),%eax			val parametre
+
+   0x080486d5 <+117>:	xor    %edx,%eax				xor str[j] sur param
+
    0x080486d7 <+119>:	mov    %eax,%edx
+
    0x080486d9 <+121>:	lea    -0x1d(%ebp),%eax
    0x080486dc <+124>:	add    -0x28(%ebp),%eax
    0x080486df <+127>:	mov    %dl,(%eax)
-   0x080486e1 <+129>:	addl   $0x1,-0x28(%ebp)
+
+   0x080486e1 <+129>:	addl   $0x1,-0x28(%ebp)		j++;
 
    0x080486e5 <+133>:	mov    -0x28(%ebp),%eax
    0x080486e8 <+136>:	cmp    -0x24(%ebp),%eax
    0x080486eb <+139>:	jb     0x80486c7 <decrypt+103>
+
+
+
 
    0x080486ed <+141>:	lea    -0x1d(%ebp),%eax
    0x080486f0 <+144>:	mov    %eax,%edx
