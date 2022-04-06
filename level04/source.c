@@ -14,11 +14,12 @@ int	main(void)
 
 	if (pid == 0) {
 		prctl(PR_SET_PDEATHSIG, SIGHUP);
-			//ptrace
+		ptrace(0,0,0,0);
 		printf("Give me some shellcode, k");
 		gets(str);
 	} else {
 		wait_id = wait(&wait_id);
+		
 	}
 
 	return (0);
