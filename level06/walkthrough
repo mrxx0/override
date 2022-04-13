@@ -1,0 +1,24 @@
+For this exercise we have a binary which reads on stdin and ask for a login and password :
+
+level06@OverRide:~$ ./level06
+***********************************
+*		level06		  *
+***********************************
+-> Enter Login: admin
+***********************************
+***** NEW ACCOUNT DETECTED ********
+***********************************
+-> Enter Serial: password
+
+Opening gdb we can see that our login is treated and changed.
+These modificaations are compared to the password.
+If they are not equal we can't login and the execution stops, else
+system "/bin/sh" is launched.
+
+We can pass the comparaison at line 114 by setting eax to 1 and then
+we can set a breakpoint at line 286 of auth function :
+
+   0x08048866 <+286>:	cmp    -0x10(%ebp),%eax
+
+Here we can check the value of $ebp - 0x10. This is the result of out login transformed.
+We can use that result with our login to get a new shell.
