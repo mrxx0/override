@@ -47,7 +47,7 @@ void set_username(t_msg *message)
 	return ;
 }
 
-void handle_message(void)
+void handle_msg(void)
 {
 	t_msg message;
 
@@ -65,6 +65,6 @@ int main ()
 			"--------------------------------------------\n" \
 			"|   ~Welcome to l33t-m$n ~    v1337        |\n" \
 			"--------------------------------------------\n");
-	handle_message();
-	return (1);
+	handle_msg();
+	return (0);
 }
