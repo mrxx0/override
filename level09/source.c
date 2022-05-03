@@ -59,7 +59,7 @@ void handle_message(void)
 	return ;
 }
 
-int main (int argc, char **argv)
+int main ()
 {
 	puts(
 			"--------------------------------------------\n" \
