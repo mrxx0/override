@@ -38,7 +38,7 @@ Starting program: /home/users/level06/level06
 -> Enter Serial: 1
 
 
-Set eax = 1 to bypass comparison with ltrace output to continue using gdb.
+Set eax = 1 to bypass comparison with ptrace output to continue using gdb.
 
 
 Breakpoint 1, 0x080487ba in auth ()
