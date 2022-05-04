@@ -6,38 +6,47 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-char		PATH[255 + 10];
 
-int		main(int arc, char ** arv)
+void	log_wrapper(FILE *file, char *str, char *name) {
+    char buff[300];
+
+    strcpy(buff, str);
+    snprintf(buff + strlen(buff), strlen(name), name);
+    fprintf(file, "LOG: %s", buff);
+}
+
+int		main(int arc, char ** argv)
 {
 	char	cp = 0;
-	int	fdNewFile = 0;
+	int		fd_new_file = 0;
 	FILE 	*log_file = NULL;
-	FILE 	*source_file = NULL;
+	FILE 	*backup_file = NULL;
+	char	backup[255 + 10];
+
 
 	if (arc != 2) {
-		printf("Usage: %s filename\n", arv[0]);
+		printf("Usage: %s filename\n", argv[0]);
 	}
 	if (!(log_file = fopen("./backups/.log", "w"))) {
 		printf("ERROR: Failed to open %s\n", "./backups/.log");
 		exit(1);
 	}
-	// log Wrapper
-	if (!(source_file = fopen(arv[1], "r"))) {
-		printf("ERROR: Failed to open %s\n", arv[1]);
+	log_wrapper(backup_file, "Starting back up:", argv[1]);
+	if (!(backup_file = fopen(argv[1], "r"))) {
+		printf("ERROR: Failed to open %s\n", argv[1]);
 		exit(1);
 	}
-	memcpy(PATH, "./backups/", 10);
-	strncat(PATH, arv[1], strlen(arv[1]) + 10);
-	if ((fdNewFile = open(PATH, O_WRONLY|O_CREAT|O_EXCL, 660)) < 0) {
-		printf("ERROR: Failed to open %s\n", PATH);
+	memcpy(backup, "./backups/", 10);
+	strncat(backup, argv[1], strlen(argv[1]) + 10);
+	if ((fd_new_file = open(backup, O_WRONLY|O_CREAT|O_EXCL, 0660)) < 0) {
+		printf("ERROR: Failed to open %s\n", backup);
 		exit(1);
 	}
-	while ((cp = fgetc(source_file)) != EOF) {
-		write(fdNewFile, &cp, 1);
+	while ((cp = fgetc(backup_file)) != EOF) {
+		write(fd_new_file, &cp, 1);
 	}
-	//log_wrapper
-	fclose(source_file);
-	close(fdNewFile);
+	log_wrapper(backup_file, "Finished back up:", argv[1]);
+	fclose(backup_file);
+	close(fd_new_file);
 	return (0);
 }
