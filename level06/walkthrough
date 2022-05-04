@@ -11,7 +11,7 @@ level06@OverRide:~$ ./level06
 -> Enter Serial: password
 
 Opening gdb we can see that our login is treated and changed.
-These modificaations are compared to the password.
+These modifications are compared to the password.
 If they are not equal we can't login and the execution stops, else
 system "/bin/sh" is launched.
 
@@ -22,3 +22,51 @@ we can set a breakpoint at line 286 of auth function :
 
 Here we can check the value of $ebp - 0x10. This is the result of out login transformed.
 We can use that result with our login to get a new shell.
+
+Let's try with admin123:
+
+
+(gdb) r
+Starting program: /home/users/level06/level06 
+***********************************
+*		level06		  *
+***********************************
+-> Enter Login: admin123
+***********************************
+***** NEW ACCOUNT DETECTED ********
+***********************************
+-> Enter Serial: 1
+
+
+Set eax = 1 to bypass comparison with ltrace output to continue using gdb.
+
+
+Breakpoint 1, 0x080487ba in auth ()
+(gdb) set $eax = 1
+(gdb) c
+Continuing.
+
+
+Show comparison value:
+
+
+Breakpoint 2, 0x08048866 in auth ()
+
+(gdb) x/d $ebp -0x10
+0xffffd5f8:	6231471
+
+
+Ok let's try with 6231471:
+
+level06@OverRide:~$ ./level06 
+***********************************
+*		level06		  *
+***********************************
+-> Enter Login: admin123
+***********************************
+***** NEW ACCOUNT DETECTED ********
+***********************************
+-> Enter Serial: 6231471
+Authenticated!
+$ cat /home/users/level07/.pass
+GbcPDRgsFK77LNnnuh7QyFYA2942Gp8yKj9KrWD8
