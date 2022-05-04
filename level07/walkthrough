@@ -116,7 +116,7 @@ Input command: store
  *** ERROR! ***
  Failed to do store command
 
-So we have to use a negative number to make the unsigned overflow.
+So we have to use a bigger number to make the unsigned overflow.
 
 114 = 1073741938. thanks to our script to find it.
 
