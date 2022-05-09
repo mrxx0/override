@@ -8,17 +8,17 @@
 
 
 void	log_wrapper(FILE *file, char *str, char *name) {
-    char buff[300];
+    	char buff[300];
 
-    strcpy(buff, str);
-    snprintf(buff + strlen(buff), strlen(name), name);
-    fprintf(file, "LOG: %s", buff);
+    	strcpy(buff, str);
+    	snprintf(buff + strlen(buff), strlen(name), name);
+   	fprintf(file, "LOG: %s\n", buff);
 }
 
 int		main(int arc, char ** argv)
 {
 	char	cp = 0;
-	int		fd_new_file = 0;
+	int	fd_new_file = 0;
 	FILE 	*log_file = NULL;
 	FILE 	*backup_file = NULL;
 	char	backup[255 + 10];
@@ -31,7 +31,7 @@ int		main(int arc, char ** argv)
 		printf("ERROR: Failed to open %s\n", "./backups/.log");
 		exit(1);
 	}
-	log_wrapper(backup_file, "Starting back up:", argv[1]);
+	log_wrapper(log_file, "Starting back up:", argv[1]);
 	if (!(backup_file = fopen(argv[1], "r"))) {
 		printf("ERROR: Failed to open %s\n", argv[1]);
 		exit(1);
@@ -45,7 +45,7 @@ int		main(int arc, char ** argv)
 	while ((cp = fgetc(backup_file)) != EOF) {
 		write(fd_new_file, &cp, 1);
 	}
-	log_wrapper(backup_file, "Finished back up:", argv[1]);
+	log_wrapper(log_file, "Finished back up:", argv[1]);
 	fclose(backup_file);
 	close(fd_new_file);
 	return (0);
